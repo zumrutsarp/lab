@@ -1,0 +1,258 @@
+================================================================================
+         YZM0206 LAB04: ALGILAYICILAR VE BASİT YAPAY SİNİR AĞLARI
+                    Wine Dataset ile MLP Classifier Uygulaması
+                              LAB RAPORU
+================================================================================
+
+================================================================================
+BÖLÜM 1: VERİ HAZIRLAMA
+================================================================================
+
+Veri seti boyutu: (178, 14)
+
+Sınıf dağılımı:
+  Class 1:  59 örnek
+  Class 2:  71 örnek
+  Class 3:  48 örnek
+
+Sütun İsimleri: Class, Alcohol, Malic acid, Ash, Alcalinity of ash, Magnesium,
+Total phenols, Flavanoids, Nonflavanoid phenols, Proanthocyanins,
+Color intensity, Hue, OD280/OD315, Proline
+
+Hedef değişken (y): Class sütunu
+Özellikler (X): Diğer 13 sütun
+
+Eğitim seti: 142 örnek (%80)
+Test seti:    36 örnek (%20)
+(random_state=42)
+
+================================================================================
+BÖLÜM 2: HAM VERİ VE STANDARDİZE VERİ KARŞILAŞTIRMASI
+================================================================================
+
+Model Mimarisi: MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500)
+
+--- Sonuçlar ---
+Ham Veri Accuracy:          %97.22
+Standardize Veri Accuracy:  %100.00
+
+--- Loss Eğrisi Gözlemleri ---
+• Ham Veri: Loss başlangıçta ~25 seviyelerinden başlayıp büyük salınımlarla
+  düşmüştür. 500 epoch sonunda yakınsamıştır ancak eğri oldukça kararsızdır.
+• Standardize Veri: Loss ~1.2'den başlayıp düzgün ve monoton bir şekilde
+  düşmüştür. ~200 epoch civarında yakınsamıştır.
+
+[Grafik: Ham Veri Loss Eğrisi ve Standardize Veri Loss Eğrisi yan yana]
+
+YORUM: Standardizasyonun Etkisi
+----------------------------------------------------------------------
+Ham veride özellikler farklı ölçeklerde olduğundan (örn. Proline 0-1700,
+Hue 0-2 aralığında), gradient descent büyük ölçekli özelliklere doğru
+sapma gösterir ve öğrenme kararsız/yavaş olur.
+
+Standardizasyon sonrası tüm özellikler ortalama=0, std=1 olacak şekilde
+dönüştürüldüğünde, loss eğrisi çok daha hızlı ve kararlı bir şekilde
+düşmektedir. Accuracy farkı: %97.2 → %100.0
+
+Sonuç: Yapay sinir ağlarında veri standardizasyonu neredeyse zorunludur.
+Gradient tabanlı optimizasyon algoritmalarının verimli çalışması için
+özelliklerin aynı ölçekte olması gerekir.
+
+================================================================================
+BÖLÜM 3: AKTİVASYON FONKSİYONLARI VE LEARNING RATE ANALİZİ
+================================================================================
+
+--- 3a. Sigmoid vs ReLU Karşılaştırması ---
+
+Model Mimarisi: MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=500)
+Veri: Standardize edilmiş
+
+Sigmoid (logistic)  → Accuracy: %100.00
+ReLU                → Accuracy: %100.00
+
+[Grafik: Aktivasyon Fonksiyonu Karşılaştırması - Sigmoid ve ReLU loss eğrileri]
+
+Gözlem: Her iki aktivasyon fonksiyonu da %100 doğruluğa ulaşmıştır ancak
+ReLU çok daha hızlı yakınsamıştır (~100 epoch). Sigmoid ise ~450 epoch
+sürmüştür.
+
+YORUM: Vanishing Gradient Problemi
+----------------------------------------------------------------------
+Sigmoid fonksiyonunun türevi maksimum 0.25'tir. Derin ağlarda geri yayılım
+sırasında bu küçük türevler çarpılarak 'vanishing gradient' (kaybolan gradyan)
+problemine yol açar — ilk katmanlar neredeyse hiç öğrenemez.
+
+ReLU ise pozitif bölgede türevi her zaman 1 olduğundan gradyanlar korunur ve
+daha hızlı yakınsama sağlar. Ancak negatif bölgede türev 0 olduğundan 'dying
+ReLU' riski vardır. Genel olarak ReLU, modern ağlarda tercih edilir.
+
+--- 3b. Learning Rate Analizi ---
+
+LR=1.0        → Accuracy: %86.11   |  Son Loss: 7.7604
+LR=0.001      → Accuracy: %100.00  |  Son Loss: 0.0068
+LR=1e-07      → Accuracy: %52.78   |  Son Loss: 1.2090
+
+[Grafik: Learning Rate Karşılaştırması - 3 farklı LR'nin loss eğrileri]
+
+YORUM: Learning Rate Etkisi
+----------------------------------------------------------------------
+• LR = 1.0 (Çok yüksek): Loss eğrisi kararsızdır, minimum noktayı sürekli
+  aşar (overshooting). Model yakınsamakta zorlanır veya hiç yakınsamaz.
+  Accuracy sadece %86.11'de kalmıştır.
+
+• LR = 0.001 (Optimum): Loss eğrisi düzgün ve hızlı bir şekilde düşer.
+  Model kararlı bir şekilde öğrenir ve %100 doğruluğa ulaşır.
+
+• LR = 1e-7 (Çok düşük): Loss neredeyse hiç düşmez. Öğrenme aşırı yavaştır
+  ve 500 epoch yeterli değildir. Accuracy %52.78 ile rastgele tahminden
+  ancak biraz iyidir. Pratikte bu durum 'öğrenme yok' demektir.
+
+Sonuç: Learning rate, modelin en kritik hiperparametrelerinden biridir.
+Ne çok büyük ne çok küçük olmalıdır.
+
+================================================================================
+BÖLÜM 4: KAPSAMLI PERFORMANS DEĞERLENDİRME
+================================================================================
+
+En İyi Model: MLPClassifier(hidden_layer_sizes=(64, 32), activation='relu',
+              learning_rate_init=0.001, max_iter=500, random_state=42)
+Veri: StandardScaler ile standardize edilmiş
+
+==================================================
+    PERFORMANS METRİKLERİ
+==================================================
+  Accuracy  (Doğruluk)  : %100.00
+  Recall    (Duyarlılık): %100.00
+  F1-Score              : %100.00
+==================================================
+
+Detaylı Sınıflandırma Raporu:
+              precision    recall  f1-score   support
+
+     Sınıf 1       1.00      1.00      1.00        14
+     Sınıf 2       1.00      1.00      1.00        14
+     Sınıf 3       1.00      1.00      1.00         8
+
+    accuracy                           1.00        36
+   macro avg       1.00      1.00      1.00        36
+weighted avg       1.00      1.00      1.00        36
+
+--- Confusion Matrix (Karmaşıklık Matrisi) ---
+
+[Grafik: Confusion Matrix]
+
+              Tahmin
+              Sınıf 1   Sınıf 2   Sınıf 3
+Gerçek
+Sınıf 1         14         0         0
+Sınıf 2          0        14         0
+Sınıf 3          0         0         8
+
+YORUM: Confusion Matrix Analizi
+----------------------------------------------------------------------
+Köşegen üzerindeki değerler doğru sınıflandırmaları gösterir.
+Tüm değerler köşegen üzerinde yer almaktadır, yani hiçbir sınıf
+birbiriyle karıştırılmamıştır. Model 36 test örneğinin tamamını
+doğru sınıflandırmıştır.
+
+--- ROC Eğrisi & AUC Değerleri ---
+
+[Grafik: ROC Eğrisi - Her sınıf için ayrı eğri]
+
+  Sınıf 1:  AUC = 1.000
+  Sınıf 2:  AUC = 1.000
+  Sınıf 3:  AUC = 1.000
+
+YORUM: ROC & AUC Analizi
+----------------------------------------------------------------------
+AUC değeri 1.0'a ne kadar yakınsa model o kadar başarılıdır.
+0.5 değeri rastgele tahmine eşittir. Tüm sınıflar için AUC değerleri
+1.000 olup, modelin her sınıfı mükemmel biçimde ayırt edebildiğini gösterir.
+
+================================================================================
+BÖLÜM 5: GENEL DEĞERLENDİRME
+================================================================================
+
+--- Veri Standardizasyonunun Önemi ---
+
+Yapay sinir ağları, gradient descent tabanlı optimizasyon kullanır. Özellikler
+farklı ölçeklerde olduğunda (örneğin Proline 0-1700, Hue 0-2), büyük ölçekli
+özellikler loss fonksiyonunu domine eder ve gradyanlar dengesiz olur.
+StandardScaler ile her özellik ortalama=0, standart sapma=1 olacak şekilde
+dönüştürüldüğünde, optimizasyon çok daha hızlı ve kararlı bir şekilde
+yakınsar. Bu deneyde ham veri ile %97.22 doğruluk elde edilirken, standardize
+veri ile %100 doğruluğa ulaşılmıştır.
+
+--- Learning Rate'in Etkisi ---
+
+Learning rate, her adımda ağırlıkların ne kadar güncelleneceğini belirler:
+• Çok yüksek LR (1.0): Optimum noktayı sürekli aşar (overshooting), loss
+  salınım yapar ve model yakınsamaz. (%86.11)
+• Uygun LR (0.001): Loss düzgün ve hızlı bir şekilde düşer, model optimal
+  noktaya ulaşır. (%100.00)
+• Çok düşük LR (1e-7): Adımlar çok küçüktür, loss neredeyse hiç azalmaz ve
+  model pratik sürede öğrenemez. (%52.78)
+
+Bu nedenle learning rate, modelin en kritik hiperparametresidir ve dikkatle
+ayarlanmalıdır.
+
+--- Aktivasyon Fonksiyonlarının Rolü ---
+
+Aktivasyon fonksiyonları, sinir ağlarına doğrusal olmayan öğrenme yeteneği
+kazandırır:
+• Sigmoid (Logistic): Çıktıyı [0,1] aralığına sıkıştırır. Ancak türevi
+  maksimum 0.25 olduğundan, derin ağlarda katmanlar arası gradyanlar
+  çarpılarak sıfıra yaklaşır (vanishing gradient). Bu durum öğrenmeyi
+  yavaşlatır.
+• ReLU: Pozitif girdiler için f(x)=x, negatif girdiler için f(x)=0 döner.
+  Türevi pozitif bölgede 1 olduğundan gradyanlar korunur ve daha hızlı
+  öğrenme sağlanır. Modern ağlarda en yaygın tercih edilen aktivasyon
+  fonksiyonudur.
+
+--- Yapay Sinir Ağlarının (ANN) Temel Çalışma Mantığı ---
+
+Yapay sinir ağı, biyolojik sinir hücrelerinden esinlenen bir makine öğrenmesi
+modelidir. Temel çalışma adımları:
+
+1. İleri Yayılım (Forward Propagation): Giriş verileri ağırlıklarla çarpılır,
+   bias eklenir ve aktivasyon fonksiyonundan geçirilerek çıktı üretilir.
+2. Loss Hesaplama: Üretilen çıktı ile gerçek değer arasındaki fark (hata) bir
+   kayıp fonksiyonu ile ölçülür.
+3. Geri Yayılım (Backpropagation): Zincir kuralı kullanılarak her ağırlığın
+   hataya katkısı (gradyan) hesaplanır.
+4. Ağırlık Güncelleme: Gradyan iniş (gradient descent) ile ağırlıklar, hatayı
+   azaltacak yönde güncellenir.
+
+Bu döngü her epoch'ta tekrarlanarak model giderek daha iyi tahminler yapmayı
+öğrenir. Katman sayısı ve nöron sayısı arttıkça ağ daha karmaşık ilişkileri
+modelleyebilir, ancak aşırı öğrenme (overfitting) riski de artar.
+
+================================================================================
+ÖZET TABLO
+================================================================================
+
++-------------------------------+------------+------------+
+| Deney                         | Accuracy   | Son Loss   |
++-------------------------------+------------+------------+
+| Ham Veri                      | %97.22     | -          |
+| Standardize Veri              | %100.00    | -          |
+| Sigmoid (logistic)            | %100.00    | -          |
+| ReLU                          | %100.00    | -          |
+| LR = 1.0   (Overshooting)    | %86.11     | 7.7604     |
+| LR = 0.001 (Optimum)         | %100.00    | 0.0068     |
+| LR = 1e-7  (Çok yavaş)       | %52.78     | 1.2090     |
++-------------------------------+------------+------------+
+| En İyi Model Metrikleri       |            |            |
++-------------------------------+------------+------------+
+| Accuracy                      | %100.00    |            |
+| Recall (macro)                | %100.00    |            |
+| F1-Score (macro)              | %100.00    |            |
+| AUC - Sınıf 1                | 1.000      |            |
+| AUC - Sınıf 2                | 1.000      |            |
+| AUC - Sınıf 3                | 1.000      |            |
++-------------------------------+------------+------------+
+
+================================================================================
+NOT: Grafik çıktıları (Loss eğrileri, Confusion Matrix, ROC Curve) notebook
+dosyasında (lab04_ann.ipynb) görsel olarak mevcuttur.
+================================================================================
